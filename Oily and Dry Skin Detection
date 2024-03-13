@@ -1,0 +1,41 @@
+%matplotlib inline
+import os
+#import ktrain
+from ktrain import vision as vis
+import re
+import glob
+import cv2
+import ktrain
+
+pattern = r'([^/]+)_\w+_\d+_\d+.jpg$'
+p = re.compile(pattern)
+r = p.search('Oily_0_0_20170112213500904.jpg')
+print(r.group(1))
+
+DATADIR=r'C:\Users\mayurk\Desktop\New folder (2)\Images'
+
+(train_data, test_data, preproc)=vis.images_from_fname(DATADIR, pattern=pattern,
+                                                       is_regression=False,
+                                                       random_state=42)
+
+vis.print_image_regression_models()
+
+model = vis.image_regression_model('pretrained_resnet50',train_data=train_data, val_data=test_data)
+
+learner = ktrain.get_learner(model=model, train_data=train_data, val_data= test_data, batch_size=64)
+
+learner.fit_onecycle(1e-4, 2)
+
+learner.freeze(15)
+learner.fit_onecycle(1e-4, 2)
+
+predictor = ktrain.get_predictor(learner.model, preproc)
+
+test_data.filenames[10:20]
+
+def real_prediction(fname):
+    pred =round(predictor.predict_filename(fname)[0])
+    vis.show_image(fname)
+    print('Predicted age : %s',pred)
+    
+real_prediction(r'C:\Users\mayurk\Desktop\4.jpg')

@@ -1,0 +1,226 @@
+# Import library
+from flask import Flask,Response
+from flask.views import MethodView
+from WrinkleDetection import WrinkleDetection
+import json
+from SkinTypeDetection import SkinTypeDetection
+from sample import EyeColorDetection
+from EyeColorDetection import EyeColorDetection
+from flask_cors import CORS
+
+
+app = Flask(__name__)
+CORS(app)
+
+# Analysis class
+class Analysis(MethodView):
+
+    def __init__(self):
+        self.eyeColor = EyeColorDetection()
+        self.skintype = SkinTypeDetection()
+        self.wrinkle = WrinkleDetection()
+
+    def get(self, method='GET'):
+
+        self.eyeColor.initialize()
+        detectEyeColor=self.eyeColor.detectEyeColor()
+        detectSkinType =self.skintype.detectSkin()
+        detectWrinkle=self.wrinkle.detectWrinkle()
+
+        # Created json object
+        response = None
+        if detectEyeColor == 'Face not detected' and detectSkinType == 'Face not detected' and detectWrinkle == 'Face not detected':
+            response = {
+                'status_code': '404',
+                'message': 'Face Not Detected'
+            }
+            return Response(json.dumps(response), status=404, mimetype='application/json')
+        else:
+            response = {
+                "status_code": "200",
+                "message": "Face Detected",
+                "body": {
+                    "Detect_eyecolor": detectEyeColor,
+                    "Detect_skin_type": detectSkinType,
+                    "Detect_wrinkle": detectWrinkle
+                }
+            }
+            return Response(json.dumps(response), status=200, mimetype='application/json')
+
+
+app.add_url_rule('/analysis', view_func=Analysis.as_view('analysis'))
+app.run(debug=True)
+
+#####################################################################################################################
+
+# Import library
+import numpy as np
+import cv2
+from flask.views import MethodView
+from mtcnn.mtcnn import MTCNN
+
+# WrinkleDetection class
+class WrinkleDetection(MethodView):
+
+    def __init__(self):
+        self.detector = MTCNN() # Face Detector
+        self.loadImage = r"C:\Users\mayurk\Desktop\123.jpg"
+        self.faceCascade = cv2.CascadeClassifier(r'C:\Users\mayurk\Desktop\haarcascade_frontalface_default.xml')
+
+    def detectWrinkle(self):
+
+        # loading image to matrix
+        img = cv2.imread(self.loadImage)
+        result = self.detector.detect_faces(img)
+
+        # Check face detected or not
+        while True:
+            if result == []:
+                return 'Face not detected'
+
+            # converting into grayscale image
+            grayImg = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            faces = self.faceCascade.detectMultiScale(grayImg, scaleFactor=1.05, minNeighbors=10)
+            for x, y, w, h in faces:
+                croppedImg = img[y:y + h, x:x + w]
+                edges = cv2.Canny(croppedImg, 130, 1000)
+                wrinkleCount = np.count_nonzero(edges)
+
+                detectWrinkle = None
+                if wrinkleCount <= 300:
+                    detectWrinkle = 'Low Wrinkle'
+
+                elif wrinkleCount > 300 and wrinkleCount <= 1000:
+                    detectWrinkle = 'Moderate Wrinkle'
+
+                else:
+                    detectWrinkle = 'High Wrinkle'
+
+                return detectWrinkle
+                break
+
+#################################################################################################################################
+
+
+# Import library
+import ktrain
+from flask.views import MethodView
+from mtcnn.mtcnn import MTCNN
+import cv2
+
+# SkinTypeDetection class
+class SkinTypeDetection(MethodView):
+
+    def __init__(self):
+        self.loadImage = r"C:\Users\mayurk\Desktop\123.jpg"
+        self.detector = MTCNN() # Face detected
+        self.predictor = ktrain.load_predictor(r'C:\Users\mayurk\Desktop\M') # Load model ktrain model for prediction
+
+    def detectSkin(self):
+
+        skinType = self.predictor.predict_filename(self.loadImage)
+        img = cv2.imread(self.loadImage)
+        while True:
+            result = self.detector.detect_faces(img)
+
+            # Check face detected or not
+            if result == []:
+                return 'Face not detected'
+
+            detectSkinType = None
+            if skinType == ['C:\\Users\\mayurk\\Desktop\\New folder (2)\\Images\\Dry']:
+                detectSkinType = "Dry Skin"
+
+            else:
+                detectSkinType = "Oily Skin"
+
+            return detectSkinType
+#################################################################################################
+
+# Import library
+import numpy as np
+import cv2
+from mtcnn.mtcnn import MTCNN
+from flask.views import MethodView
+
+
+# EyeColorDetection class
+class EyeColorDetection(MethodView):
+
+    eyeColors = None
+    eyeColorRange = None
+
+    def __init__(self):
+        self.detector =MTCNN() # Face detected
+        self.loadImage = r"C:\Users\mayurk\Desktop\123.jpg"
+
+    def initialize(self):
+
+        # Global Variable
+        global eyeColors
+        global eyeColorRange
+
+        # define HSV color ranges for eyes colors
+        eyeColors = ("Blue", "Blue Gray", "Brown", "Brown Gray", "Brown Black", "Green", "Green Gray","Other")
+        eyeColorRange = {
+            eyeColors[0]: ((166, 21, 50), (240, 100, 85)),
+            eyeColors[1]: ((166, 2, 25), (300, 20, 75)),
+            eyeColors[2]: ((2, 20, 20), (40, 100, 60)),
+            eyeColors[3]: ((20, 3, 30), (65, 60, 60)),
+            eyeColors[4]: ((0, 10, 5), (40, 40, 25)),
+            eyeColors[5]: ((60, 21, 50), (165, 100, 85)),
+            eyeColors[6]: ((60, 2, 25), (165, 20, 65))}
+
+    def checkColor(self,hsv,color):
+
+        if (hsv[0] >= color[0][0]) and (hsv[0] <= color[1][0]) and (hsv[1] >= color[0][1]) and (
+                hsv[1] <= color[1][1]) and (hsv[2] >= color[0][2]) and (hsv[2] <= color[1][2]):
+
+            return True
+        else:
+            return False
+
+    # define eye color category rules in HSV space
+    def findEyeColors(self,hsv):
+        colorId = 7
+        for i in range(8 - 1):
+            if self.checkColor(hsv, eyeColorRange[eyeColors[i]]) == True:
+                color_id = i
+
+        return colorId
+
+    # Detect eye color
+    def detectEyeColor(self):
+
+        self.image = cv2.imread(self.loadImage, cv2.IMREAD_COLOR)
+        self.imgHSV = cv2.cvtColor(self.image, cv2.COLOR_BGR2HSV)
+        h, w = self.image.shape[0:2]
+        imgMask = np.zeros((self.image.shape[0], self.image.shape[1], 1))
+
+        result = self.detector.detect_faces(self.image)
+
+        # Check face detected or not
+        if result == []:
+            return  'Face not detected'
+
+        bounding_box = result[0]['box']
+
+        leftEye = result[0]['keypoints']['left_eye']
+        rightEye = result[0]['keypoints']['right_eye']
+
+        eyeDistance = np.linalg.norm(np.array(leftEye) - np.array(rightEye))
+        eyeRadius = eyeDistance / 15  # approximate
+
+        cv2.circle(imgMask, leftEye, int(eyeRadius), (255, 255, 255), -1)
+        cv2.circle(imgMask, rightEye, int(eyeRadius), (255, 255, 255), -1)
+
+        eyeClass = np.zeros(8, np.float)
+
+        for y in range(0, h):
+            for x in range(0, w):
+                if imgMask[y, x] != 0:
+                    eyeClass[self.findEyeColors(self.imgHSV[y, x])] += 1
+
+        mainColorIndex = np.argmax(eyeClass[:len(eyeClass) - 1])
+        detectEyeColor = eyeColors[mainColorIndex]
+        return detectEyeColor

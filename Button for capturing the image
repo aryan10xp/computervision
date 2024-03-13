@@ -1,0 +1,55 @@
+import flask
+from flask import Flask,render_template
+import cv2
+
+app=Flask(__name__)
+
+@app.route('/')
+def home():
+    return render_template('ok.html')
+
+@app.route('/login')
+def login():
+    faceCascade = cv2.CascadeClassifier(r'C:\Users\mayurk\Desktop\haarcascade_frontalface_default.xml')
+
+    video_capture = cv2.VideoCapture(0)
+    while True:
+        # Capture frame-by-frame
+        _, img = video_capture.read()
+
+        cv2.imshow('img', img)
+
+        result = True
+        while (result):
+            # Save the capture image
+            cv2.imwrite(r'C:\Users\mayurk\Desktop\VI16.jpg', img)
+            result = False
+            # Press c button to capture image
+        if cv2.waitKey(1) & 0xff == ord('c'):
+            break
+
+if __name__ == '__main__':
+    app.run(debug=True)
+    
+    #####################################
+    Html file
+    #####################################
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Skin Analysis</title>
+</head>
+<body>
+
+    <form action="/login" method="get">
+
+
+
+    <input type="submit" value="Capture">
+
+    </form>
+
+
+</body>
+</html>

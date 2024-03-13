@@ -1,0 +1,153 @@
+import numpy as np
+import cv2
+from mtcnn.mtcnn import MTCNN
+from flask import Flask, render_template
+import ktrain
+
+app = Flask(__name__)
+
+# Global Variable
+detector = None
+parser = None
+opt = None
+EyeColors = None
+EyeColorRange = None
+pic = r"C:\Users\mayurk\PycharmProjects\SkinAnlaysis\static\edit.jpg"
+
+
+@app.route('/home')
+def index():
+    return render_template('base.html')
+
+
+def initialize():
+    # Global Variable
+    global detector
+    global parser
+    global opt
+    global EyeColors
+    global EyeColorRange
+    global pic
+
+    detector = MTCNN()
+
+    # define HSV color ranges for eyes colors
+    EyeColors = ("Blue", "Blue Gray", "Brown", "Brown Gray", "Brown Black", "Green", "Green Gray", "Other")
+    EyeColorRange = {
+        EyeColors[0]: ((166, 21, 50), (240, 100, 85)),
+        EyeColors[1]: ((166, 2, 25), (300, 20, 75)),
+        EyeColors[2]: ((2, 20, 20), (40, 100, 60)),
+        EyeColors[3]: ((20, 3, 30), (65, 60, 60)),
+        EyeColors[4]: ((0, 10, 5), (40, 40, 25)),
+        EyeColors[5]: ((60, 21, 50), (165, 100, 85)),
+        EyeColors[6]: ((60, 2, 25), (165, 20, 65))
+    }
+
+
+def check_color(hsv, color):
+    if (hsv[0] >= color[0][0]) and (hsv[0] <= color[1][0]) and (hsv[1] >= color[0][1]) and (
+            hsv[1] <= color[1][1]) and (hsv[2] >= color[0][2]) and (hsv[2] <= color[1][2]):
+        return True
+    else:
+        return False
+
+
+# define eye color category rules in HSV space
+def find_EyeColors(hsv):
+    color_id = 7
+    for i in range(len(EyeColors) - 1):
+        if check_color(hsv, EyeColorRange[EyeColors[i]]) == True:
+            color_id = i
+
+    return color_id
+
+@app.route('/analysis')
+def detect_eye_color():
+
+    initialize()
+
+    image = cv2.imread(pic, cv2.IMREAD_COLOR)
+    imgHSV = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    h, w = image.shape[0:2]
+    imgMask = np.zeros((image.shape[0], image.shape[1], 1))
+
+    result = detector.detect_faces(image)
+
+    bounding_box = result[0]['box']
+    left_eye = result[0]['keypoints']['left_eye']
+    right_eye = result[0]['keypoints']['right_eye']
+
+    eye_distance = np.linalg.norm(np.array(left_eye) - np.array(right_eye))
+    eye_radius = eye_distance / 15  # approximate
+
+    cv2.circle(imgMask, left_eye, int(eye_radius), (255, 255, 255), -1)
+    cv2.circle(imgMask, right_eye, int(eye_radius), (255, 255, 255), -1)
+
+    eye_class = np.zeros(len(EyeColors), np.float)
+
+    for y in range(0, h):
+        for x in range(0, w):
+            if imgMask[y, x] != 0:
+                eye_class[find_EyeColors(imgHSV[y, x])] += 1
+
+    main_color_index = np.argmax(eye_class[:len(eye_class) - 1])
+    Detect_eyecolor = EyeColors[main_color_index]
+
+# Detect Dry and Oily Skin
+    predictor = ktrain.load_predictor(r'C:\Users\mayurk\Desktop\M')
+    Skin_type = predictor.predict_filename(pic)
+
+    Detect_skin_type = None
+    if Skin_type == ['C:\\Users\\mayurk\\Desktop\\New folder (2)\\Images\\Dry']:
+        Detect_skin_type = "Dry Skin"
+
+    else:
+        Detect_skin_type = "Oily Skin"
+
+# Detect Wrinkles
+    face_cascade = cv2.CascadeClassifier(r'C:\Users\mayurk\Desktop\haarcascade_frontalface_default.xml')
+    # loading image to matrix
+    img = cv2.imread(pic)
+    # converting into grayscale image
+    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    faces = face_cascade.detectMultiScale(gray_img, scaleFactor=1.05, minNeighbors=10)
+    for x, y, w, h in faces:
+        cropped_img = img[y:y + h, x:x + w]
+        edges = cv2.Canny(cropped_img, 130, 1000)
+        wrinkle_count = np.count_nonzero(edges)
+        Detect_wrinkle = None
+        if wrinkle_count <= 300:
+            Detect_wrinkle = 'Low Wrinkle'
+        elif wrinkle_count > 300 and wrinkle_count <= 1000:
+            Detect_wrinkle = 'Moderate Wrinkle'
+        else:
+            Detect_wrinkle = 'High Wrinkle'
+
+    return render_template('skin.html', Detect_eyecolor=Detect_eyecolor, Detect_skin_type=Detect_skin_type,
+                           Detect_wrinkle=Detect_wrinkle)
+
+
+cv2.waitKey(0)
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
+#############
+Html
+#############
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Face Mapping</title>
+</head>
+
+<body>
+        <img src="{{url_for('static',filename='edit.jpg')}}">
+
+        <p>Skin Type: {{Detect_skin_type}}</p><br>
+        <p>Wrinkle: {{Detect_wrinkle}}</p><br>
+        <p>Eye Color: {{Detect_eyecolor}}</p>
+</body>
+</html>

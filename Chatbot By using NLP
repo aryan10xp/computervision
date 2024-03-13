@@ -1,0 +1,28 @@
+pip install nltk
+import nltk
+pip install chatterbot_corpus 
+
+# Tokenization
+from nltk.tokenize import sent_tokenize, word_tokenize
+# Limitization
+from nltk.stem import WordNetLemmatizer
+# Stemming
+from nltk.stem import PorterStemmer
+from nltk.tokenize import word_tokenize
+
+
+
+pip install chatterbot
+from chatterbot import ChatBot
+from chatterbot.trainers import ListTrainer
+your_bot= ChatBot(name="pyBot", read_only=True, logic_adapters=['chatterbot.logic.MathematicalEvaluation','chatterbot.logic.BestMatch'])
+
+gretting=['hi','hello','how r u?', 'I am fine','hey nice to talk to you']
+Newton1=['First law of motion', 'In the first law, the object will not change its motion unless the force acts on it']
+
+train_yourbot= ListTrainer(your_bot)
+
+for item in (gretting, Newton1):
+  train_yourbot.train(item)
+  
+  

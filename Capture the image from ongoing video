@@ -1,0 +1,23 @@
+import cv2
+
+faceCascade = cv2.CascadeClassifier(r'C:\Users\mayurk\Desktop\haarcascade_frontalface_default.xml')
+
+video_capture = cv2.VideoCapture(0)
+while True:
+    # Capture frame-by-frame
+    _, img = video_capture.read()
+
+    cv2.imshow('img', img)
+
+    result = True
+    while (result):
+
+        # Save the capture image
+        cv2.imwrite(r'C:\Users\mayurk\Desktop\VI0.jpg', img)
+        result = False
+        # Press c button to capture image
+    if cv2.waitKey(1) & 0xff == ord('c'):
+        break
+
+video_capture.release()
+cv2.destroyAllWindows()

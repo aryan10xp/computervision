@@ -1,0 +1,73 @@
+import cv2
+from flask import Flask,render_template,redirect,url_for
+import numpy as np
+from IPython.display import display, Image
+
+app=Flask(__name__)
+
+@app.route('/')
+def page1():
+    return render_template('an.html')
+
+
+@app.route('/login')
+def page2():
+    face_cascade = cv2.CascadeClassifier(r'C:\Users\mayurk\Desktop\haarcascade_frontalface_default.xml')
+
+    # loading image to matrix
+    img = cv2.imread(r'C:/Users/mayurk/Desktop/w.jpg')
+
+    # converting into grayscale image
+    gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    faces = face_cascade.detectMultiScale(gray_img, scaleFactor=1.05, minNeighbors=10)
+    for x, y, w, h in faces:
+        cropped_img = img[y:y + h, x:x + w]
+        edges = cv2.Canny(cropped_img, 130, 1000)
+        title = np.count_nonzero(edges)
+
+        return render_template('k.html', title=title)
+
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
+    
+################
+an.Html file
+################
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Face Mapping</title>
+</head>
+<body>
+        <form action="/login" method="get">
+
+            <input type="submit" value="Analyze Your Skin">
+        </form>
+</body>
+</html>
+
+################
+k.Html file
+################
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Face Mapping</title>
+
+</head>
+<body>
+
+
+    <img src="{{url_for('static',filename='w.jpg')}}">
+    <p>Wrinkle : {{title}}</p>
+    <script>
+
+
+    </script>
+
+</body>
+</html>

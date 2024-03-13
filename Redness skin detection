@@ -1,0 +1,53 @@
+
+import numpy as np
+import cv2
+import tensorflow as tf
+
+
+path = r'C:\Users\Hp\Desktop\Images\VI0.jpg'
+img = cv2.imread(path)
+imgHSV = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+# lower = np.array([0,120,70])
+# upper = np.array([10,255,255])
+# mask1 = cv2.inRange(imgHSV, lower, upper)
+
+lower = np.array([0,120,70])
+upper = np.array([180,255,255])
+
+mask = cv2.inRange(imgHSV, lower, upper)
+
+# mask = mask1 + mask2
+
+imgResult = cv2.bitwise_and(img,img,mask=mask)
+
+countours0,hierarchy=cv2.findContours(mask,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
+# print(countours0)
+if countours0 == []:
+    print('no area')
+else:
+    print('area')
+a=[]
+for cnt in countours0:
+    area=cv2.contourArea(cnt)
+
+    # print(area)
+    a.append(area)
+# print(a)
+    # print(a)
+b=sum(a)
+print(b)
+
+if b<500:
+    print('no redness')
+else:
+    print('redness')
+
+
+print('hii')
+cv2.imshow('img', img)
+cv2.imshow('msk',mask)
+cv2.imshow('re',imgResult)
+#
+cv2.waitKey(0)
+cv2.destroyAllWindows()

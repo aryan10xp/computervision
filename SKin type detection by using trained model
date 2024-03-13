@@ -1,0 +1,29 @@
+import ktrain
+from flask.views import MethodView
+from mtcnn.mtcnn import MTCNN
+import cv2
+
+
+class SkinTypeDetection(MethodView):
+
+    def detectskin(self):
+        detector = MTCNN()
+        pic=r"C:\Users\mayurk\Desktop\123.jpg"
+        predictor = ktrain.load_predictor(r'C:\Users\mayurk\Desktop\M')
+        Skin_type = predictor.predict_filename(pic)
+        img = cv2.imread(pic)
+        while True:
+            result = detector.detect_faces(img)
+
+            if result == []:
+                return 'Can not detect any face in the input image!'
+                #break
+
+            Detect_skin_type = None
+            if Skin_type == ['C:\\Users\\mayurk\\Desktop\\New folder (2)\\Images\\Dry']:
+                Detect_skin_type = "Dry Skin"
+
+            else:
+                Detect_skin_type = "Oily Skin"
+            return Detect_skin_type
+            #break
